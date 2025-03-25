@@ -39,28 +39,32 @@ int main(void) {
   clilen = sizeof(cli_addr);
 
   printf("Server listening on port %d...\n", PORT);
-  newsockfd = accept(sockfd, (struct sockaddr *)&cli_addr, &clilen);
-  if (newsockfd < 0) {
-    error("ERROR on accept");
+
+  while (1) {
+    newsockfd = accept(sockfd, (struct sockaddr *)&cli_addr, &clilen);
+    if (newsockfd < 0) {
+      error("ERROR on accept");
+    }
+
+    bzero(buffer, 1024);
+    n = read(newsockfd, buffer, 1023);
+    if (n < 0) {
+      error("ERROR reading from socket");
+    }
+    printf("Request: %s\n", buffer);
+
+    char *http_resonse = "HTTP/1.1 200 OK\r\n"
+                         "Content-Type: text/html\r\n"
+                         "Connection: close\r\n\r\n"
+                         "<html><body><h1>Hello, World!</h1></body></html>";
+
+    n = write(newsockfd, http_resonse, strlen(http_resonse));
+    if (n < 0) {
+      error("ERROR writing to socket");
+    }
+
+    close(newsockfd);
   }
 
-  bzero(buffer, 1024);
-  n = read(newsockfd, buffer, 1023);
-  if (n < 0) {
-    error("ERROR reading from socket");
-  }
-  printf("Request: %s\n", buffer);
-
-  char *http_resonse = "HTTP/1.1 200 OK\r\n"
-                       "Content-Type: text/html\r\n"
-                       "Connection: close\r\n\r\n"
-                       "<html><body><h1>Hello, World!</h1></body></html>";
-
-  n = write(newsockfd, http_resonse, strlen(http_resonse));
-  if (n < 0) {
-    error("ERROR writing to socket");
-  }
-
-  close(newsockfd);
   close(sockfd);
 }
