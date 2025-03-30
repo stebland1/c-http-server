@@ -1,3 +1,4 @@
+#include "utils.h"
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdio.h>
@@ -52,6 +53,9 @@ int main(void) {
       error("ERROR reading from socket");
     }
     printf("Request: %s\n", buffer);
+
+    struct http_request request;
+    parse_request(buffer, &request);
 
     char *http_resonse = "HTTP/1.1 200 OK\r\n"
                          "Content-Type: text/html\r\n"
