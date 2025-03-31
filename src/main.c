@@ -57,6 +57,9 @@ int main(void) {
                          "Content-Type: text/html\r\n"
                          "Connection: close\r\n\r\n"
                          "<html><body><h1>Hello, World!</h1></body></html>";
+    if (request.body) {
+      free(request.body);
+    }
 
     n = write(newsockfd, http_resonse, strlen(http_resonse));
     if (n < 0) {
