@@ -1,3 +1,4 @@
+#include "request_handler.h"
 #include "utils.h"
 #include <netdb.h>
 #include <netinet/in.h>
@@ -9,11 +10,6 @@
 #include <unistd.h>
 
 #define PORT 8080
-
-void error(const char *msg) {
-  perror(msg);
-  exit(1);
-}
 
 int main(void) {
   int sockfd, newsockfd;
