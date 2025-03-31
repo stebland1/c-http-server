@@ -52,16 +52,13 @@ int main(void) {
 
     struct http_request request;
     parse_request(buffer, &request);
+    char *http_response = handle_request(&request);
 
-    char *http_resonse = "HTTP/1.1 200 OK\r\n"
-                         "Content-Type: text/html\r\n"
-                         "Connection: close\r\n\r\n"
-                         "<html><body><h1>Hello, World!</h1></body></html>";
     if (request.body) {
       free(request.body);
     }
 
-    n = write(newsockfd, http_resonse, strlen(http_resonse));
+    n = write(newsockfd, http_response, strlen(http_response));
     if (n < 0) {
       error("ERROR writing to socket");
     }

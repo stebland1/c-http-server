@@ -82,3 +82,19 @@ int parse_request(char *raw_request, struct http_request *request) {
   parse_body(cur_pos, request);
   return 0;
 }
+
+char *handle_request(struct http_request *request) {
+  char *response;
+
+  if (strcmp(request->request_line.path, "/") == 0) {
+    response =
+        "HTTP/1.1 200 OK\r\nContent-Type: "
+        "text/html\r\n\r\n<html><body><h1>Hello, World!</h1></body></html>";
+  } else {
+    response = "HTTP/1.1 405 Method Not Allowed\r\nContent-Type: "
+               "text/html\r\n\r\n<html><body><h1>405 Method Not "
+               "Allowed</h1></body></html>";
+  }
+
+  return response;
+}

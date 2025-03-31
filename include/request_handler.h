@@ -28,4 +28,6 @@ int parse_body(char *body_start, struct http_request *request);
 int parse_headers(char *header_lines, struct http_header *request_headers);
 int parse_request(char *raw_request, struct http_request *request);
 
+char *handle_request(struct http_request *request);
+
 #endif
