@@ -2,7 +2,7 @@ CC = gcc
 
 CFLAGS = -Wall -I./include
 
-SRC = src/main.c src/utils.c src/request_handler.c
+SRC = src/main.c src/utils.c src/request_handler.c src/str_builder.c
 
 OBJ = $(SRC:.c=.o)
 
