@@ -28,6 +28,9 @@ int parse_body(char *body_start, struct http_request *request);
 int parse_headers(char *header_lines, struct http_header *request_headers);
 int parse_request(char *raw_request, struct http_request *request);
 
-char *handle_request(struct http_request *request);
+void handle_request(struct http_request *request, int sockfd);
+void handle_unsupported_request(int sockfd);
+void handle_dir_listing(char *dir, int sockfd);
+void handle_internal_server_error(int sockfd);
 
 #endif

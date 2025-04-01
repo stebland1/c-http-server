@@ -1,7 +1,14 @@
 #include "request_handler.h"
+#include "dir_list.h"
+#include "str_builder.h"
+#include "utils.h"
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <unistd.h>
 
 int parse_request_line(char *line, struct http_request_line *request_line) {
   int num_parsed = sscanf(line, "%s %s %s", request_line->method,
@@ -83,18 +90,115 @@ int parse_request(char *raw_request, struct http_request *request) {
   return 0;
 }
 
-char *handle_request(struct http_request *request) {
-  char *response;
+void handle_internal_server_error(int sockfd) {
+  const char *response =
+      "HTTP/1.1 500 Internal Server Error\r\nContent-Type: text/html\r\n\r\n"
+      "<html><body><h1>500 Internal Server Error</h1><p>Failed to render "
+      "directory listings.</p></body></html>";
+  if (write(sockfd, response, strlen(response)) < 0) {
+    error("ERROR writing to socket");
+  }
+}
 
-  if (strcmp(request->request_line.path, "/") == 0) {
-    response =
-        "HTTP/1.1 200 OK\r\nContent-Type: "
-        "text/html\r\n\r\n<html><body><h1>Hello, World!</h1></body></html>";
-  } else {
-    response = "HTTP/1.1 405 Method Not Allowed\r\nContent-Type: "
-               "text/html\r\n\r\n<html><body><h1>405 Method Not "
-               "Allowed</h1></body></html>";
+void handle_unsupported_request(int sockfd) {
+  const char *response = "HTTP/1.1 405 Method Not Allowed\r\nContent-Type: "
+                         "text/html\r\n\r\n<html><body><h1>405 Method Not "
+                         "Allowed</h1></body></html>";
+  if (write(sockfd, response, strlen(response)) < 0) {
+    error("ERROR writing to socket");
+  }
+}
+
+void handle_dir_listing(char *dir, int sockfd) {
+  struct string_builder sb;
+  struct dir_list dl;
+
+  if (init_string_builder(&sb, 16)) {
+    goto error;
   }
 
-  return response;
+  if (append_string(
+          &sb, "HTTP/1.1 200 OK\r\nContent-Type: "
+               "text/html\r\n\r\n<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML "
+               "4.01//EN\" "
+               "\"http://www.w3.org/TR/html4/strict.dtd\"><html><head><meta "
+               "http-equiv=\"Content-Type\" content=\"text/html; "
+               "charset=utf-8\"><title>Directory listing for ") ||
+      append_string(&sb, dir) ||
+      append_string(&sb, "</title></head><body><h1>Directory listing for ") ||
+      append_string(&sb, dir) || append_string(&sb, "</h1><hr>")) {
+    goto error;
+  }
+
+  init_dir_list(&dl);
+  int read_dir_status = read_dir(dir, &dl);
+  if (read_dir_status != 0) {
+    free_string_builder(&sb);
+    free_dir_list(&dl);
+    handle_internal_server_error(sockfd);
+    return;
+  }
+
+  if (dl.count > 0) {
+    if (append_string(&sb, "<ul>")) {
+      goto error;
+    }
+    for (int i = 0; i < dl.count; i++) {
+      if (append_string(&sb, "<li><a href=\"") ||
+          append_string(&sb, dl.files[i]) || append_string(&sb, "\">") ||
+          append_string(&sb, dl.files[i]) || append_string(&sb, "</a></li>")) {
+        goto error;
+      }
+    }
+    if (append_string(&sb, "</ul>")) {
+      goto error;
+    }
+  }
+
+  if (append_string(&sb, "<hr></body></html>")) {
+    goto error;
+  }
+
+  const char *response = get_string(&sb);
+  if (write(sockfd, response, strlen(response)) < 0) {
+    perror("ERROR writing to socket");
+    goto error;
+  }
+
+  free_string_builder(&sb);
+  free_dir_list(&dl);
+  return;
+
+error:
+  free_string_builder(&sb);
+  free_dir_list(&dl);
+  handle_internal_server_error(sockfd);
+}
+
+void handle_request(struct http_request *request, int sockfd) {
+  struct stat buffer;
+
+  char *path = request->request_line.path;
+  if (path[0] == '/') {
+    path++;
+  }
+
+  if (path[0] == '\0') {
+    path = "/";
+  }
+
+  int status = stat(path, &buffer);
+  if (status != 0) {
+    handle_unsupported_request(sockfd);
+  } else if (S_ISREG(buffer.st_mode)) {
+    handle_unsupported_request(sockfd);
+  } else if (S_ISDIR(buffer.st_mode)) {
+    handle_dir_listing(request->request_line.path, sockfd);
+  } else {
+    handle_unsupported_request(sockfd);
+  }
+
+  if (request->body) {
+    free(request->body);
+  }
 }

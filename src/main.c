@@ -3,8 +3,7 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <strings.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -48,20 +47,10 @@ int main(void) {
     if (n < 0) {
       error("ERROR reading from socket");
     }
-    printf("Request: %s\n", buffer);
 
     struct http_request request;
     parse_request(buffer, &request);
-    char *http_response = handle_request(&request);
-
-    if (request.body) {
-      free(request.body);
-    }
-
-    n = write(newsockfd, http_response, strlen(http_response));
-    if (n < 0) {
-      error("ERROR writing to socket");
-    }
+    handle_request(&request, newsockfd);
 
     close(newsockfd);
   }
